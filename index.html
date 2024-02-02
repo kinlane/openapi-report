@@ -1,0 +1,178 @@
+---
+layout: page
+width: expand
+---
+<div class="uk-section">
+    <div class="uk-container uk-container-xlarge">
+
+        <h1 class="uk-article-title">OpenAPI Report</h1>
+        <p>I regularly need a summary report of what is happening in an OpenAPI, so I can reuse for other purposes or just understand the overview of an API.</p>
+        <input type="text" id="format" style="width: 100%;"> 
+        <textarea style="width: 100%; height: 250px; border: 5px solid #000;" id="openapi" onchange="updateOpenAPI();"></textarea>
+        <h2>OpenAPI Report</h2>
+        <div id="report"></div>
+        <script>
+
+            function stripHtml(html)
+            {
+            let tmp = document.createElement("DIV");
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || "";
+            }
+
+            function saveOpenAPI(openapi){
+                var format = document.getElementById('format').value;
+                if(format=='json'){
+                    document.getElementById('openapi').value = JSON.stringify(openapi, null, 2); 
+                }
+                if(format=='yaml'){
+                    document.getElementById('openapi').value = jsyaml.dump(openapi); 
+                }                
+            }
+
+            function parseOpenAPI(){
+                var openapi = document.getElementById('openapi').value;
+
+                var is_yaml = 0;
+                var is_json = 0;
+
+                try {
+                    var openapi = jsyaml.load(openapi);
+                    console.log(openapi);
+                    is_yaml = 1;
+                    is_json = 0;
+                } catch (error) {
+                    console.log(error);
+                }
+                try {
+                    var openapi = JSON.parse(openapi);
+                    is_json = 1;
+                    is_yaml = 0;
+                } catch (error) {}
+
+                if(is_json==1){
+                    document.getElementById("format").value = "json";
+                }
+                else{
+                    document.getElementById("format").value = "yaml";  
+                }
+                return openapi;                
+            }
+
+            function updateInfoTitle(){
+                var openapi = parseOpenAPI();
+                openapi.info.title = document.getElementById("info-title").value;
+                saveOpenAPI(openapi);
+            }
+            function updateInfoDescription(){
+                var openapi = parseOpenAPI();
+                openapi.info.description = document.getElementById("info-description").value;
+                saveOpenAPI(openapi);                
+            }            
+            function updateOperationSummary(path,verb,id){
+                var openapi = parseOpenAPI();
+                openapi.paths[path][verb].summary = document.getElementById(id).value;
+                saveOpenAPI(openapi);                
+            }            
+            function updateOperationDescription(path,verb,id){
+                var openapi = parseOpenAPI();
+                openapi.paths[path][verb].description = document.getElementById(id).value;
+                saveOpenAPI(openapi);                  
+            }            
+            function updateOpenAPI(){
+
+                var openapi = parseOpenAPI();
+                //console.log(openapi)
+
+                var html = '';
+
+                if(openapi.info.title){
+                    var info_title = openapi.info.title;
+                    html += info_title + '<br>';
+                }
+                if(openapi.info.description){
+                    var info_description = openapi.info.description;
+                    html += info_description + '<br>';
+                }
+
+                var paths = [];
+                var methods = [];
+                var operations = [];
+                var schema = [];
+
+                if(openapi.paths){
+                    var operation_counter = 1;
+                    for (const [path, method] of Object.entries(openapi.paths)) {
+                        
+                        //console.log(path);
+
+                        paths.push(path);
+
+                        for (const [verb, operation] of Object.entries(method)) {
+                            
+                            methods.push(verb);
+                            //console.log(verb);
+
+                            if(verb == 'get' || verb == 'post' || verb == 'patch' || verb == 'put' || verb == 'delete'){
+
+                                var o = {};
+                                o.summary = operation.summary;
+                                o.description = operation.description;
+                                operations.push(o);
+
+                                operation_counter++;
+                            
+                            }
+                        }                    
+                    }
+                }
+
+                if(openapi.components){
+                    if(openapi.components.schemas){
+                        var operation_counter = 1;
+                        for (const [this_schema, object] of Object.entries(openapi.components.schemas)) {
+                            schema.push(this_schema);
+                            }
+                        }     
+                    }           
+
+                if(paths.length>0){
+                    html += '<h2>Paths</h2><ul>';
+                    for (let i = 0; i < paths.length; i++) {
+                        html += '<li>' + paths[i] + '</li>';
+                        }
+                    html += '</ul>';
+                    }   
+                    
+                if(methods.length>0){
+                    //html += '<h2>Methods</h2><ul>';
+                    for (let i = 0; i < methods.length; i++) {
+                        //html += '<li>' + methods[i] + '</li>';
+                        }
+                    html += '</ul>';
+                    } 
+                    
+                if(operations.length>0){
+                    html += '<h2>Operations</h2><ul>';
+                    for (let i = 0; i < operations.length; i++) {
+                        if(!operations[i].summary){ operations[i].summary = 'No Summary'; }
+                        //html += '<li>' + operations[i].summary + ' - ' + stripHtml(operations[i].description.trim()) + '</li>';
+                        html += '<li>' + operations[i].summary + '</li>';
+                        }
+                    html += '</ul>';
+                    }  
+                    
+                if(schema.length>0){
+                    html += '<h2>Schema</h2><ul>';
+                    for (let i = 0; i < schema.length; i++) {
+                        html += '<li>' + schema[i] + '</li>';
+                        }
+                    html += '</ul>';
+                    }                       
+
+                document.getElementById('report').innerHTML = html;
+
+            }
+        </script>
+    </div>
+</div>
